@@ -37,10 +37,11 @@ jobs:
 
       - name: Compile VaultScope Client (arm64-apple-ios)
         run: |
+          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
           swift build -c release \
             --triple arm64-apple-ios17.0 \
             -Xswiftc -sdk \
-            -Xswiftc $(xcrun --sdk iphoneos --show-sdk-path)
+            -Xswiftc "$SDKROOT"
 
       - name: Package IPA Bundle
         run: |
