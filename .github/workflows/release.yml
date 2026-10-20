@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
 
 permissions:
   contents: write
@@ -12,7 +17,7 @@ permissions:
 jobs:
   build-and-release:
     name: Build iOS & iPadOS IPA
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - name: Checkout Code
@@ -20,9 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Select Xcode 16
+      - name: Select Xcode (Swift 6)
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: 'latest-stable'
+
+      - name: Check Environment
         run: |
-          sudo xcode-select -s /Applications/Xcode_16.0.app || sudo xcode-select -s /Applications/Xcode_15.4.app
           xcodebuild -version
           swift --version
 
@@ -38,40 +47,42 @@ jobs:
           BUNDLE_DIR="build/Payload/UserApp.app"
           mkdir -p "$BUNDLE_DIR"
           
-          # Copy compiled binary
-          cp .build/arm64-apple-ios/release/UserApp "$BUNDLE_DIR/UserApp"
+          # Find compiled binary
+          BIN_PATH=$(find .build -name "UserApp" -type f -perm +111 2>/dev/null | head -n 1)
+          if [ -z "$BIN_PATH" ]; then
+            BIN_PATH=".build/arm64-apple-ios/release/UserApp"
+          fi
+          echo "Found binary: $BIN_PATH"
+          cp "$BIN_PATH" "$BUNDLE_DIR/UserApp"
           
           # Copy Info.plist
           cp Info.plist "$BUNDLE_DIR/Info.plist"
           
-          # Copy AppIcon and resources if present
-          if [ -f "AppIcon.png" ]; then
-            cp AppIcon*.png "$BUNDLE_DIR/" 2>/dev/null || true
-          fi
+          # Copy AppIcon and assets
+          cp AppIcon*.png "$BUNDLE_DIR/" 2>/dev/null || true
           
-          # Copy bundle resources
-          if [ -d ".build/arm64-apple-ios/release/UserApp_UserApp.bundle" ]; then
-            cp -r .build/arm64-apple-ios/release/UserApp_UserApp.bundle "$BUNDLE_DIR/"
-          fi
+          # Copy bundle resources if present
+          find .build -name "*UserApp*.bundle" -type d -exec cp -r {} "$BUNDLE_DIR/" \; 2>/dev/null || true
 
           # Create distribution archive
           cd build
           zip -qry ../VaultScope-Client.ipa Payload
           cd ..
           
-          sha256sum VaultScope-Client.ipa > VaultScope-Client.ipa.sha256
+          shasum -a 256 VaultScope-Client.ipa > VaultScope-Client.ipa.sha256
           echo "Built VaultScope-Client.ipa ($(du -h VaultScope-Client.ipa | cut -f1))"
 
-      - name: Create GitHub Release with Attached IPA
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: VaultScope Client ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name != 'main' && github.ref_name || inputs.tag_name || 'v1.0.0' }}
+          name: VaultScope Client ${{ github.ref_name != 'main' && github.ref_name || inputs.tag_name || 'v1.0.0' }}
           generate_release_notes: true
           files: |
             VaultScope-Client.ipa
             VaultScope-Client.ipa.sha256
           body: |
-            ### VaultScope Client for iOS & iPadOS (${{ github.ref_name }})
+            ### VaultScope Client for iOS & iPadOS
             
             Native cloud infrastructure management client engineered for VaultScope clients with Obsidian Liquid Glass styling, hardware-grade security, and full iPadOS multi-tasking support.
             
