@@ -3,8 +3,11 @@ import SwiftUI
 public struct RootView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedTab: Int = 0
     @State private var isBackgrounded: Bool = false
+    @State private var showAccountSheet: Bool = false
+    @State private var showDeploySheet: Bool = false
 
     public init() {}
 
@@ -12,38 +15,77 @@ public struct RootView: View {
         ZStack {
             Group {
                 if appState.isAuthenticated {
-                    TabView(selection: $selectedTab) {
-                        DashboardView(selectedTab: $selectedTab)
-                            .tabItem {
-                                Label("Overview", systemImage: "square.grid.2x2.fill")
+                    if horizontalSizeClass == .regular {
+                        // MARK: - iPadOS Native Navigation Split View & Sidebar
+                        NavigationSplitView {
+                            iPadSidebarView(
+                                selectedTab: $selectedTab,
+                                showAccountSheet: $showAccountSheet,
+                                showDeploySheet: $showDeploySheet
+                            )
+                            .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 320)
+                        } detail: {
+                            Group {
+                                switch selectedTab {
+                                case 0:
+                                    DashboardView(selectedTab: $selectedTab)
+                                case 1:
+                                    ServicesListView()
+                                case 2:
+                                    DeployCatalogView()
+                                case 3:
+                                    InvoicesListView()
+                                case 4:
+                                    SupportTicketsView()
+                                default:
+                                    DashboardView(selectedTab: $selectedTab)
+                                }
                             }
-                            .tag(0)
+                        }
+                        .navigationSplitViewStyle(.balanced)
+                        .sheet(isPresented: $showAccountSheet) {
+                            AccountView()
+                        }
+                        .sheet(isPresented: $showDeploySheet) {
+                            if let first = appState.products.first {
+                                DeployConfiguratorSheet(product: first)
+                            }
+                        }
+                    } else {
+                        // MARK: - iPhone Native Tab View
+                        TabView(selection: $selectedTab) {
+                            DashboardView(selectedTab: $selectedTab)
+                                .tabItem {
+                                    Label("Overview", systemImage: "square.grid.2x2.fill")
+                                }
+                                .tag(0)
 
-                        ServicesListView()
-                            .tabItem {
-                                Label("Infrastructure", systemImage: "server.rack")
-                            }
-                            .tag(1)
+                            ServicesListView()
+                                .tabItem {
+                                    Label("Infrastructure", systemImage: "server.rack")
+                                }
+                                .tag(1)
 
-                        DeployCatalogView()
-                            .tabItem {
-                                Label("Deploy", systemImage: "plus.circle.fill")
-                            }
-                            .tag(2)
+                            DeployCatalogView()
+                                .tabItem {
+                                    Label("Deploy", systemImage: "plus.circle.fill")
+                                }
+                                .tag(2)
 
-                        InvoicesListView()
-                            .tabItem {
-                                Label("Billing", systemImage: "creditcard.fill")
-                            }
-                            .tag(3)
+                            InvoicesListView()
+                                .tabItem {
+                                    Label("Billing", systemImage: "creditcard.fill")
+                                }
+                                .tag(3)
 
-                        SupportTicketsView()
-                            .tabItem {
-                                Label("Support", systemImage: "lifepreserver.fill")
-                            }
-                            .tag(4)
+                            SupportTicketsView()
+                                .tabItem {
+                                    Label("Support", systemImage: "lifepreserver.fill")
+                                }
+                                .tag(4)
+                        }
+                        .tint(VaultTheme.accentBright)
                     }
-                    .tint(VaultTheme.accentBright)
                 } else {
                     LoginView()
                 }

@@ -73,7 +73,7 @@ public struct ServicesListView: View {
                     if filteredServices.isEmpty {
                         emptyStateView
                     } else {
-                        VStack(spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 14)], spacing: 14) {
                             ForEach(filteredServices) { service in
                                 NavigationLink {
                                     ServiceDetailView(serviceId: service.id)
@@ -81,6 +81,7 @@ public struct ServicesListView: View {
                                     ServerCardView(service: service)
                                 }
                                 .buttonStyle(.plain)
+                                .hoverEffect(.highlight)
                             }
                         }
                     }

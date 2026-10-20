@@ -42,7 +42,7 @@ public struct InvoicesListView: View {
                     if filteredInvoices.isEmpty {
                         emptyStateView
                     } else {
-                        VStack(spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 12)], spacing: 12) {
                             ForEach(filteredInvoices) { invoice in
                                 NavigationLink {
                                     InvoiceDetailView(invoiceId: invoice.id)
@@ -50,6 +50,7 @@ public struct InvoicesListView: View {
                                     invoiceRow(invoice: invoice)
                                 }
                                 .buttonStyle(.plain)
+                                .hoverEffect(.highlight)
                             }
                         }
                     }

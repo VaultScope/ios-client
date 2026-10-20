@@ -44,9 +44,10 @@ public struct DeployCatalogView: View {
                     } else if filteredProducts.isEmpty {
                         emptyStateView
                     } else {
-                        VStack(spacing: 12) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 14)], spacing: 14) {
                             ForEach(filteredProducts) { product in
                                 productCard(product: product)
+                                    .hoverEffect(.highlight)
                             }
                         }
                     }

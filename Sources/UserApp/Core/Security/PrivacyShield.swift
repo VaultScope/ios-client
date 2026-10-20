@@ -103,6 +103,8 @@ public struct PrivacyShieldView: View {
                     .padding(.top, 4)
                 }
             }
+            .frame(maxWidth: 440)
+            .frame(maxWidth: .infinity)
         }
     }
 }

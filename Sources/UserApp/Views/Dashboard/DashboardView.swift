@@ -595,5 +595,6 @@ struct QuickNavChip: View {
             )
         }
         .buttonStyle(.plain)
+        .hoverEffect(.highlight)
     }
 }

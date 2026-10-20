@@ -32,7 +32,7 @@ public struct SupportTicketsView: View {
                     if filteredTickets.isEmpty {
                         emptyStateView
                     } else {
-                        VStack(spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 12)], spacing: 12) {
                             ForEach(filteredTickets) { ticket in
                                 NavigationLink {
                                     TicketDetailView(ticketId: ticket.id)
@@ -40,6 +40,7 @@ public struct SupportTicketsView: View {
                                     ticketCard(ticket: ticket)
                                 }
                                 .buttonStyle(.plain)
+                                .hoverEffect(.highlight)
                             }
                         }
                     }

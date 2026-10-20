@@ -314,6 +314,8 @@ public struct LoginView: View {
                     .padding(.top, 8)
                 }
                 .padding(.bottom, 32)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
             .background(VaultTheme.obsidian.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
