@@ -1,0 +1,89 @@
+name: Build & Release IPA
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build iOS & iPadOS IPA
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode 16
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.0.app || sudo xcode-select -s /Applications/Xcode_15.4.app
+          xcodebuild -version
+          swift --version
+
+      - name: Compile VaultScope Client (arm64-apple-ios)
+        run: |
+          swift build -c release \
+            --triple arm64-apple-ios17.0 \
+            -Xswiftc -sdk \
+            -Xswiftc $(xcrun --sdk iphoneos --show-sdk-path)
+
+      - name: Package IPA Bundle
+        run: |
+          BUNDLE_DIR="build/Payload/UserApp.app"
+          mkdir -p "$BUNDLE_DIR"
+          
+          # Copy compiled binary
+          cp .build/arm64-apple-ios/release/UserApp "$BUNDLE_DIR/UserApp"
+          
+          # Copy Info.plist
+          cp Info.plist "$BUNDLE_DIR/Info.plist"
+          
+          # Copy AppIcon and resources if present
+          if [ -f "AppIcon.png" ]; then
+            cp AppIcon*.png "$BUNDLE_DIR/" 2>/dev/null || true
+          fi
+          
+          # Copy bundle resources
+          if [ -d ".build/arm64-apple-ios/release/UserApp_UserApp.bundle" ]; then
+            cp -r .build/arm64-apple-ios/release/UserApp_UserApp.bundle "$BUNDLE_DIR/"
+          fi
+
+          # Create distribution archive
+          cd build
+          zip -qry ../VaultScope-Client.ipa Payload
+          cd ..
+          
+          sha256sum VaultScope-Client.ipa > VaultScope-Client.ipa.sha256
+          echo "Built VaultScope-Client.ipa ($(du -h VaultScope-Client.ipa | cut -f1))"
+
+      - name: Create GitHub Release with Attached IPA
+        uses: softprops/action-gh-release@v2
+        with:
+          name: VaultScope Client ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            VaultScope-Client.ipa
+            VaultScope-Client.ipa.sha256
+          body: |
+            ### VaultScope Client for iOS & iPadOS (${{ github.ref_name }})
+            
+            Native cloud infrastructure management client engineered for VaultScope clients with Obsidian Liquid Glass styling, hardware-grade security, and full iPadOS multi-tasking support.
+            
+            #### Highlights
+            - **Native iPadOS Support**: Responsive `NavigationSplitView` sidebar, multi-column `LazyVGrid`, and full Stage Manager & Split View multitasking.
+            - **Built-in SFTP Client**: Direct instance file navigation, breadcrumb jumping, search, and integrated code/text editor.
+            - **Hardware-Enforced Security**: Face ID / Touch ID biometric locks with Secure Enclave Keychain storage and App Switcher privacy shield.
+            - **Zero Clutter**: Clean live telemetry sparklines and ACPI server power controls.
+            
+            #### Sideloading Instructions:
+            1. **TrollStore** (Recommended for jailbroken/TrollStore devices): Download `VaultScope-Client.ipa` and open with TrollStore for instant installation without revokes.
+            2. **AltStore / SideStore**: Open AltStore on your device, tap **My Apps -> +**, select `VaultScope-Client.ipa`.
+            3. **Sideloadly / xtool**: Connect iPhone/iPad via USB and drop `VaultScope-Client.ipa` into Sideloadly or install using `./xtool.sh install`.
+            
+            *Sha256 Checksum:* Check `VaultScope-Client.ipa.sha256` to verify bundle integrity.
