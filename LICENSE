@@ -1,0 +1,36 @@
+PolyForm Noncommercial License 1.0.0
+https://polyformproject.org/licenses/noncommercial/1.0.0
+
+Copyright (c) 2026 VaultScope Technologies
+
+## Purpose
+This license allows you to use, copy, modify, and distribute the software for noncommercial purposes only.
+
+## Agreement
+In order to receive this license, you have to agree to its terms. If you do not agree to every term of this license, you may not use, copy, modify, distribute, or make available the software.
+
+## Notices
+You must ensure that everyone who gets a copy of any part of this software from you, with or without changes, also receives this copyright notice and the terms of this license.
+
+## Noncommercial Purposes
+Any use of the software is allowed, except for commercial purposes:
+
+1. A "commercial purpose" is any use of the software:
+   a. As part of a business, commercial enterprise, hosting provider, or cloud reseller that charges fees or consideration for goods or services;
+   b. As part of a paid commercial product, proprietary SaaS, or commercial application store listing;
+   c. To generate revenue, directly or indirectly; or
+   d. In exchange for payment, subscription, sponsorship, or monetary consideration of any kind.
+
+2. A "noncommercial purpose" includes:
+   a. Personal, non-monetized server and cloud infrastructure monitoring;
+   b. Academic research, study, educational courses, and private experimentation;
+   c. Security audits, code inspection, and bug bounty evaluation;
+   d. Community contributions and pull requests back to the official upstream VaultScope repositories.
+
+## Patent Defense
+If you make any claim that this software, or any part of it, infringes any patent:
+1. Your license for the software ends immediately.
+2. If you make a claim that this software infringes a patent, but you only make that claim in response to a patent claim first made against you for using this software, your license will not end.
+
+## No Warranty
+As far as the law allows, the software comes AS IS, without any warranty or condition, and no contributor will be liable to anyone for any damages related to the software or this license, under any kind of legal claim.
