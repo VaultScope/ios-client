@@ -25,8 +25,8 @@ public struct DashboardView: View {
                     // MARK: - Header Status & Brand Row
                     headerBrandRow
 
-                    // MARK: - 3-Column Metric & Quick Nav Strip
-                    metricStrip
+                    // MARK: - Modular Glanceable Widgets Grid
+                    modularWidgetsGrid
 
                     // MARK: - Deployed Infrastructure Stream
                     deployedInfrastructureStream
@@ -190,106 +190,77 @@ public struct DashboardView: View {
         .padding(.top, 4)
     }
 
-    // MARK: - 3-Card Metric Strip
-    private var metricStrip: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                // Card 1: Instances
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("INSTANCES")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(VaultTheme.textFaint)
+    // MARK: - Modular Glanceable Widgets Grid
+    private var modularWidgetsGrid: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Text("GLANCEABLE WIDGETS")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundColor(VaultTheme.textFaint)
 
-                    Text(appState.isRefreshing && appState.services.isEmpty
-                         ? "—"
-                         : "\(appState.activeServices.count) \(appState.activeServices.count == 1 ? "Service" : "Services")")
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
-                        .foregroundColor(VaultTheme.textPrimary)
+                Spacer()
 
-                    Text("\(runningCount) online")
-                        .font(.caption2)
-                        .foregroundColor(VaultTheme.textMuted)
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(VaultTheme.emerald)
+                        .frame(width: 6, height: 6)
+                    Text("Live Sync")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(VaultTheme.emerald)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .obsidianCard(cornerRadius: 12, padding: 14)
-
-                // Card 2: Run Rate
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("RUN RATE")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(VaultTheme.textFaint)
-
-                    Text(appState.monthlyGrossSpend > 0
-                         ? String(format: "€%.2f / mo", appState.monthlyGrossSpend)
-                         : "€0.00 / mo")
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
-                        .foregroundColor(VaultTheme.textPrimary)
-
-                    Text(appState.monthlyNetSpend > 0
-                         ? String(format: "€%.2f net + 19%% VAT", appState.monthlyNetSpend)
-                         : "Predictable monthly billing")
-                        .font(.caption2)
-                        .foregroundColor(VaultTheme.textMuted)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .obsidianCard(cornerRadius: 12, padding: 14)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(VaultTheme.subtle)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule().strokeBorder(VaultTheme.emerald.opacity(0.3), lineWidth: 1)
+                )
             }
 
-            // Card 3: Quick Navigation
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("QUICK NAVIGATION")
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(VaultTheme.textFaint)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 340), spacing: 14)], spacing: 14) {
+                DashboardServerWidget(onSelect: {
+                    selectedTab = 1
+                })
 
-                    Spacer()
+                DashboardTicketsWidget(onSelect: {
+                    selectedTab = 4
+                })
 
-                    Button {
-                        showAccountSheet = true
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "slider.horizontal.3")
-                                .font(.caption2)
-                            Text("Account")
-                                .font(.caption2)
-                        }
-                        .foregroundColor(VaultTheme.accentBright)
+                DashboardTelemetryWidget()
+
+                DashboardSpendWidget(onSelect: {
+                    selectedTab = 3
+                })
+            }
+
+            // Quick Category Shortcuts Strip
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    QuickNavChip(title: "VPS Instances", icon: "server.rack") {
+                        selectedTab = 1
                     }
-                }
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        QuickNavChip(title: "VPS", icon: "server.rack") {
+                    QuickNavChip(title: "Dedicated Bare Metal", icon: "harddrive.fill") {
+                        selectedTab = 1
+                    }
+
+                    QuickNavChip(title: "SFTP Storage Vault", icon: "folder.badge.gearshape") {
+                        if let srv = appState.sftpServices.first ?? appState.activeServices.first {
+                            selectedSftpService = srv
+                        } else {
                             selectedTab = 1
                         }
+                    }
 
-                        QuickNavChip(title: "Dedicated", icon: "harddrive.fill") {
-                            selectedTab = 1
-                        }
+                    QuickNavChip(title: "Cloud Billing", icon: "creditcard.fill") {
+                        selectedTab = 3
+                    }
 
-                        QuickNavChip(title: "ODP", icon: "cpu") {
-                            selectedTab = 1
-                        }
-
-                        QuickNavChip(title: "SFTP", icon: "folder.badge.gearshape") {
-                            if let srv = appState.sftpServices.first ?? appState.activeServices.first {
-                                selectedSftpService = srv
-                            } else {
-                                selectedTab = 1
-                            }
-                        }
-
-                        QuickNavChip(title: "Billing", icon: "creditcard.fill") {
-                            selectedTab = 3
-                        }
-
-                        QuickNavChip(title: "Support (\(appState.openTicketsCount))", icon: "lifepreserver.fill") {
-                            selectedTab = 4
-                        }
+                    QuickNavChip(title: "Support Desk", icon: "lifepreserver.fill") {
+                        selectedTab = 4
                     }
                 }
             }
-            .obsidianCard(cornerRadius: 12, padding: 14)
         }
     }
 

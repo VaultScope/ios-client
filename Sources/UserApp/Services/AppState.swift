@@ -27,11 +27,18 @@ public final class AppState: ObservableObject {
         didSet { SessionStorage.shared.saveCustomer(customer) }
     }
     @Published public var services: [ServiceInstance] = [] {
-        didSet { telemetry.update(runningServices: services.filter { $0.status == .running }) }
+        didSet {
+            telemetry.update(runningServices: services.filter { $0.status == .running })
+            syncWidgets()
+        }
     }
     @Published public var products: [Product] = []
-    @Published public var invoices: [Invoice] = []
-    @Published public var tickets: [Ticket] = []
+    @Published public var invoices: [Invoice] = [] {
+        didSet { syncWidgets() }
+    }
+    @Published public var tickets: [Ticket] = [] {
+        didSet { syncWidgets() }
+    }
     @Published public var activities: [ActivityItem] = []
     @Published public var billingInfo: BillingInfo? = nil
     @Published public var storefrontOptions: StorefrontOptions? = nil
@@ -342,6 +349,19 @@ public final class AppState: ObservableObject {
         if let emails = try? await profileRepo.fetchBillingEmails() {
             self.billingEmails = emails
         }
+
+        // 8. Synchronize Home Screen & Modular Widgets
+        self.syncWidgets()
+    }
+
+    public func syncWidgets() {
+        WidgetSyncManager.shared.sync(
+            runningServers: activeServices.filter { $0.status == .running }.count,
+            totalServers: activeServices.count,
+            openTickets: openTicketsCount,
+            waitingTickets: waitingCustomerTicketsCount,
+            monthlySpend: monthlyNetSpend
+        )
     }
 
     public func fetchPublicCatalog() async {
