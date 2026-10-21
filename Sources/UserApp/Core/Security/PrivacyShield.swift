@@ -46,17 +46,9 @@ public struct PrivacyShieldView: View {
                     }
 
                     VStack(spacing: 6) {
-                        if let path = Bundle.module.path(forResource: "Logo", ofType: "png"),
-                           let uiImage = UIImage(contentsOfFile: path) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 26)
-                        } else {
-                            Text("VaultScope")
-                                .font(.system(size: 26, weight: .bold))
-                                .foregroundColor(VaultTheme.textPrimary)
-                        }
+                        Text("VaultScope")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundColor(VaultTheme.textPrimary)
 
                         Text("Critical Infrastructure Shield Active")
                             .font(.subheadline)

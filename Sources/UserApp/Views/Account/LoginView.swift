@@ -27,35 +27,39 @@ public struct LoginView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     // Header Brand
-                    VStack(spacing: 12) {
-                        if let path = Bundle.module.path(forResource: "LogoPicture", ofType: "png") ?? Bundle.module.path(forResource: "logo-image", ofType: "png"),
-                           let uiImage = UIImage(contentsOfFile: path) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 60)
-                                .padding(.bottom, 2)
-                        } else {
-                            Image(systemName: "shield.fill")
-                                .font(.system(size: 48))
-                                .foregroundColor(VaultTheme.accentBright)
-                        }
+                    VStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(VaultTheme.accentSubtle)
+                                .frame(width: 88, height: 88)
 
-                        if let path = Bundle.module.path(forResource: "Logo", ofType: "png"),
-                           let uiImage = UIImage(contentsOfFile: path) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 32)
-                        } else {
+                            Circle()
+                                .strokeBorder(VaultTheme.accentBright.opacity(0.35), lineWidth: 1.5)
+                                .frame(width: 88, height: 88)
+
+                            if let path = Bundle.module.path(forResource: "LogoPicture", ofType: "png") ?? Bundle.module.path(forResource: "logo-image", ofType: "png"),
+                               let uiImage = UIImage(contentsOfFile: path) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 52, height: 52)
+                            } else {
+                                Image(systemName: "shield.fill")
+                                    .font(.system(size: 44))
+                                    .foregroundColor(VaultTheme.accentBright)
+                            }
+                        }
+                        .shadow(color: VaultTheme.accentGlow, radius: 16, x: 0, y: 4)
+
+                        VStack(spacing: 4) {
                             Text("VaultScope")
-                                .font(.system(size: 32, weight: .bold, design: .default))
+                                .font(.system(size: 30, weight: .bold, design: .default))
                                 .foregroundColor(VaultTheme.textPrimary)
-                        }
 
-                        Text("Cloud Infrastructure Client Portal")
-                            .font(.subheadline)
-                            .foregroundColor(VaultTheme.textMuted)
+                            Text("Cloud Infrastructure Client Portal")
+                                .font(.subheadline)
+                                .foregroundColor(VaultTheme.textMuted)
+                        }
 
                         HStack(spacing: 6) {
                             Circle()
