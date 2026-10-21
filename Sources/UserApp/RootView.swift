@@ -4,7 +4,6 @@ public struct RootView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @State private var selectedTab: Int = 0
     @State private var isBackgrounded: Bool = false
     @State private var showAccountSheet: Bool = false
     @State private var showDeploySheet: Bool = false
@@ -19,16 +18,16 @@ public struct RootView: View {
                         // MARK: - iPadOS Native Navigation Split View & Sidebar
                         NavigationSplitView {
                             iPadSidebarView(
-                                selectedTab: $selectedTab,
+                                selectedTab: $appState.selectedTab,
                                 showAccountSheet: $showAccountSheet,
                                 showDeploySheet: $showDeploySheet
                             )
                             .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 320)
                         } detail: {
                             Group {
-                                switch selectedTab {
+                                switch appState.selectedTab {
                                 case 0:
-                                    DashboardView(selectedTab: $selectedTab)
+                                    DashboardView(selectedTab: $appState.selectedTab)
                                 case 1:
                                     ServicesListView()
                                 case 2:
@@ -38,7 +37,7 @@ public struct RootView: View {
                                 case 4:
                                     SupportTicketsView()
                                 default:
-                                    DashboardView(selectedTab: $selectedTab)
+                                    DashboardView(selectedTab: $appState.selectedTab)
                                 }
                             }
                         }
@@ -53,8 +52,8 @@ public struct RootView: View {
                         }
                     } else {
                         // MARK: - iPhone Native Tab View
-                        TabView(selection: $selectedTab) {
-                            DashboardView(selectedTab: $selectedTab)
+                        TabView(selection: $appState.selectedTab) {
+                            DashboardView(selectedTab: $appState.selectedTab)
                                 .tabItem {
                                     Label("Overview", systemImage: "square.grid.2x2.fill")
                                 }
@@ -82,6 +81,7 @@ public struct RootView: View {
                                 .tabItem {
                                     Label("Support", systemImage: "lifepreserver.fill")
                                 }
+                                .badge(appState.unreadTicketsCount > 0 ? "\(appState.unreadTicketsCount)" : nil)
                                 .tag(4)
                         }
                         .tint(VaultTheme.accentBright)
@@ -116,7 +116,23 @@ public struct RootView: View {
             }
         }
         .overlay(alignment: .top) {
-            VStack(spacing: 6) {
+            VStack(spacing: 8) {
+                // Realtime Ticket Toast Notification Banner
+                if let activeTicketToast = appState.notificationEngine.activeToast {
+                    TicketToastBannerView(
+                        item: activeTicketToast,
+                        onTap: {
+                            appState.navigateToTicket(id: activeTicketToast.ticketId)
+                        },
+                        onDismiss: {
+                            appState.notificationEngine.dismissActiveToast()
+                        }
+                    )
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 4)
+                    .padding(.horizontal, 16)
+                }
+
                 // Offline Banner
                 if !appState.isConnected {
                     HStack(spacing: 6) {
@@ -137,7 +153,7 @@ public struct RootView: View {
                     .padding(.top, 4)
                 }
 
-                // Toast Notification Banner
+                // Generic Status Banner
                 if let bannerMsg = appState.successBannerMessage {
                     BannerToastView(message: bannerMsg)
                         .transition(.move(edge: .top).combined(with: .opacity))
@@ -150,6 +166,7 @@ public struct RootView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appState.isAppLocked)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appState.isConnected)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: appState.successBannerMessage)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: appState.notificationEngine.activeToast != nil)
         .onChange(of: scenePhase) { oldPhase, newPhase in
             if newPhase == .background {
                 isBackgrounded = true
@@ -160,6 +177,12 @@ public struct RootView: View {
                     Task {
                         try? await Task.sleep(nanoseconds: 200_000_000)
                         await appState.authenticateBiometrics()
+                    }
+                }
+                // Trigger immediate ticket delta check when returning to active state
+                if appState.isAuthenticated {
+                    Task {
+                        await appState.notificationEngine.poll(ticketsRepo: appState.ticketsRepo)
                     }
                 }
             }

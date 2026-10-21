@@ -317,6 +317,94 @@ public struct AccountView: View {
                         .font(.caption)
                 }
 
+                // Section 2c: Realtime Ticket Notifications
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "bell.badge.fill")
+                            .foregroundColor(VaultTheme.accentBright)
+                            .font(.title3)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Realtime Ticket Engine")
+                                .font(.subheadline.weight(.medium))
+                            Text(appState.notificationEngine.isPollingActive ? "Active (SSE + 6s delta polling)" : "Idle")
+                                .font(.caption2)
+                                .foregroundColor(appState.notificationEngine.isPollingActive ? VaultTheme.emerald : VaultTheme.textMuted)
+                        }
+                        Spacer()
+                        StatusPill(
+                            title: appState.notificationEngine.isPollingActive ? "ACTIVE" : "STANDBY",
+                            color: appState.notificationEngine.isPollingActive ? VaultTheme.emerald : VaultTheme.textMuted
+                        )
+                    }
+
+                    HStack(spacing: 12) {
+                        Image(systemName: "app.badge.fill")
+                            .foregroundColor(VaultTheme.cyan)
+                            .font(.title3)
+                            .frame(width: 24)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("System Notifications & Badges")
+                                .font(.subheadline.weight(.medium))
+                            Text(appState.notificationEngine.hasPermission ? "Authorized (.alert, .sound, .badge)" : "Permission required")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        if !appState.notificationEngine.hasPermission {
+                            Button("Allow") {
+                                appState.notificationEngine.requestAuthorization()
+                            }
+                            .buttonStyle(.bordered)
+                            .tint(VaultTheme.accentBright)
+                            .font(.caption.weight(.semibold))
+                        } else {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundColor(VaultTheme.emerald)
+                                .font(.caption)
+                        }
+                    }
+
+                    // Interactive Notification Simulation / Diagnostics
+                    Button {
+                        let sampleTicketId = appState.tickets.first?.id ?? UUID()
+                        let sampleTicketNum = appState.tickets.first?.ticketNumber ?? "TKT-1042"
+                        let sample = TicketToastItem(
+                            ticketId: sampleTicketId,
+                            ticketNumber: sampleTicketNum,
+                            title: "Support Reply: \(sampleTicketNum)",
+                            message: "VaultScope Engineer: \"Your server network bandwidth has been upgraded to 10 Gbps.\"",
+                            notificationType: .newStaffMessage,
+                            status: .inProgress,
+                            authorName: "VaultScope Engineer"
+                        )
+                        appState.notificationEngine.deliverNotification(sample)
+                    } label: {
+                        Label("Test Staff Reply Notification", systemImage: "bubble.left.and.bubble.right.fill")
+                    }
+
+                    Button {
+                        let sampleTicketId = appState.tickets.first?.id ?? UUID()
+                        let sampleTicketNum = appState.tickets.first?.ticketNumber ?? "TKT-1042"
+                        let sample = TicketToastItem(
+                            ticketId: sampleTicketId,
+                            ticketNumber: sampleTicketNum,
+                            title: "Ticket Status: WAITING ON YOU",
+                            message: "\"Dedicated Server Migration\" requires your SSH confirmation.",
+                            notificationType: .statusChanged,
+                            status: .waitingCustomer
+                        )
+                        appState.notificationEngine.deliverNotification(sample)
+                    } label: {
+                        Label("Test Status Change Notification", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                } header: {
+                    Text("Realtime Ticket Notifications")
+                } footer: {
+                    Text("VaultScope streams live ticket messages via Server-Sent Events (SSE) and polls background updates every 6 seconds to deliver native toast banners and system push alerts.")
+                        .font(.caption)
+                }
+
                 // Section 3: Additional Billing Email Recipients (B2B)
                 Section {
                     if appState.billingEmails.isEmpty {

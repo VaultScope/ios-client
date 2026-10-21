@@ -67,7 +67,7 @@ public struct iPadSidebarView: View {
                         tag: 4,
                         title: "Support Tickets",
                         icon: "lifepreserver.fill",
-                        badge: appState.openTicketsCount > 0 ? "\(appState.openTicketsCount)" : nil,
+                        badge: appState.unreadTicketsCount > 0 ? "\(appState.unreadTicketsCount)" : (appState.openTicketsCount > 0 ? "\(appState.openTicketsCount)" : nil),
                         shortcut: "5"
                     )
                 }

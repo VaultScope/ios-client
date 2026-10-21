@@ -7,6 +7,8 @@ public struct TicketDetailView: View {
     public let ticketId: UUID
     @State private var replyText: String = ""
     @State private var isSending: Bool = false
+    @State private var sseClient: TicketSSEClient? = nil
+    @State private var isRealtimeActive: Bool = false
 
     private var ticket: Ticket? {
         appState.tickets.first(where: { $0.id == ticketId })
@@ -24,10 +26,28 @@ public struct TicketDetailView: View {
                         VStack(spacing: 16) {
                             // Header Meta Section
                             VStack(alignment: .leading, spacing: 8) {
-                                HStack {
+                                HStack(spacing: 8) {
                                     Text(tkt.ticketNumber)
                                         .font(.caption.monospaced())
                                         .foregroundColor(VaultTheme.accentBright)
+
+                                    // Realtime Live SSE Indicator
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(isRealtimeActive ? VaultTheme.emerald : VaultTheme.accentBright)
+                                            .frame(width: 6, height: 6)
+                                        Text(isRealtimeActive ? "LIVE SSE" : "SYNCED")
+                                            .font(.system(size: 8, weight: .bold, design: .monospaced))
+                                            .foregroundColor(isRealtimeActive ? VaultTheme.emerald : VaultTheme.accentBright)
+                                    }
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(VaultTheme.subtle)
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule().strokeBorder((isRealtimeActive ? VaultTheme.emerald : VaultTheme.accentBright).opacity(0.3), lineWidth: 1)
+                                    )
+
                                     Spacer()
                                     StatusPill(title: tkt.status.title, color: tkt.status.color)
                                 }
@@ -140,8 +160,38 @@ public struct TicketDetailView: View {
                 .background(VaultTheme.obsidian.ignoresSafeArea())
                 .navigationTitle(tkt.ticketNumber)
                 .navigationBarTitleDisplayMode(.inline)
-                .task {
+                .refreshable {
                     await appState.refreshTicketDetail(ticketId: ticketId)
+                }
+                .task {
+                    appState.markTicketAsRead(ticketId: ticketId)
+                    await appState.refreshTicketDetail(ticketId: ticketId)
+
+                    // Connect Realtime SSE Stream for instant incoming replies
+                    if let url = URL(string: appState.apiBaseURL) {
+                        let client = TicketSSEClient(
+                            ticketId: ticketId,
+                            baseURL: url,
+                            token: appState.savedApiToken.isEmpty ? nil : appState.savedApiToken,
+                            onMessage: { msg in
+                                Task { @MainActor in
+                                    appState.appendRealtimeMessage(ticketId: ticketId, message: msg)
+                                    appState.markTicketAsRead(ticketId: ticketId)
+                                }
+                            },
+                            onConnectionChange: { active in
+                                Task { @MainActor in
+                                    self.isRealtimeActive = active
+                                }
+                            }
+                        )
+                        self.sseClient = client
+                        client.connect()
+                    }
+                }
+                .onDisappear {
+                    sseClient?.disconnect()
+                    sseClient = nil
                 }
             } else {
                 ContentUnavailableView("Ticket Not Found", systemImage: "bubble.left.and.bubble.right")

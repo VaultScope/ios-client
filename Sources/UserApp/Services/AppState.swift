@@ -16,6 +16,11 @@ public final class AppState: ObservableObject {
     // MARK: - Telemetry Engine
     public let telemetry: TelemetryEngine
 
+    // MARK: - Realtime Ticket Notification Engine & Navigation State
+    public let notificationEngine = TicketNotificationEngine.shared
+    @Published public var selectedTab: Int = 0
+    @Published public var navigationTicketId: UUID? = nil
+
     // MARK: - Published Domain State
     @Published public var isAuthenticated: Bool = false
     @Published public var customer: Customer {
@@ -60,6 +65,11 @@ public final class AppState: ObservableObject {
 
     public var waitingCustomerTicketsCount: Int {
         tickets.filter { $0.status == .waitingCustomer }.count
+    }
+
+    public var unreadTicketsCount: Int {
+        let count = notificationEngine.unreadCount
+        return count > 0 ? count : waitingCustomerTicketsCount
     }
 
     public var vpsServices: [ServiceInstance] {
@@ -179,6 +189,22 @@ public final class AppState: ObservableObject {
             Task { @MainActor in
                 await self.handleUnauthorizedSession()
             }
+        }
+
+        // Realtime Support Ticket Notification Engine
+        notificationEngine.setup()
+        notificationEngine.onNavigateToTicket = { [weak self] ticketId in
+            self?.navigateToTicket(id: ticketId)
+        }
+
+        notificationEngine.objectWillChange
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        if self.isAuthenticated {
+            notificationEngine.startPolling(ticketsRepo: self.ticketsRepo)
         }
 
         // Initial sync
@@ -305,9 +331,10 @@ public final class AppState: ObservableObject {
             self.billingInfo = bInfo
         }
 
-        // 5. Tickets
+        // 5. Tickets & Realtime Delta Evaluation
         if let liveTickets = try? await ticketsRepo.fetchTickets() {
             self.tickets = liveTickets
+            await notificationEngine.evaluateTicketDeltas(liveTickets: liveTickets, ticketsRepo: ticketsRepo)
         }
 
         // 6. Activities
@@ -505,6 +532,16 @@ public final class AppState: ObservableObject {
         }
     }
 
+    public func appendRealtimeMessage(ticketId: UUID, message: TicketMessage) {
+        if let idx = self.tickets.firstIndex(where: { $0.id == ticketId }) {
+            if !self.tickets[idx].messages.contains(where: { $0.id == message.id }) {
+                self.tickets[idx].messages.append(message)
+                self.tickets[idx].updatedAt = message.createdAt
+                triggerHaptic(.impact)
+            }
+        }
+    }
+
     // MARK: - Profile & Compliance
     public func updateProfile(
         name: String? = nil,
@@ -630,6 +667,7 @@ public final class AppState: ObservableObject {
         self.isAuthenticated = true
         SessionStorage.shared.saveToken(token)
         SessionStorage.shared.saveCustomer(loggedCustomer)
+        notificationEngine.startPolling(ticketsRepo: ticketsRepo)
 
         await refresh()
         showNotification("Welcome back, \(loggedCustomer.name.isEmpty ? loggedCustomer.email : loggedCustomer.name)!")
@@ -668,6 +706,7 @@ public final class AppState: ObservableObject {
             self.isAuthenticated = true
             SessionStorage.shared.saveToken(token)
             SessionStorage.shared.saveCustomer(cust)
+            notificationEngine.startPolling(ticketsRepo: ticketsRepo)
             await refresh()
             showNotification("Welcome to VaultScope, \(cust.name)!")
         }
@@ -679,6 +718,8 @@ public final class AppState: ObservableObject {
         Task {
             await authRepo.logout()
         }
+        notificationEngine.stopPolling()
+        notificationEngine.dismissActiveToast()
         self.isAuthenticated = false
         SessionStorage.shared.clearToken()
         SessionStorage.shared.clearCustomer()
@@ -689,5 +730,17 @@ public final class AppState: ObservableObject {
         self.activities = []
         self.customer = Customer(name: "", email: "")
         showNotification("Signed out.")
+    }
+
+    // MARK: - Ticket Navigation & Read State
+    public func navigateToTicket(id: UUID) {
+        self.selectedTab = 4
+        self.navigationTicketId = id
+        notificationEngine.dismissActiveToast()
+        notificationEngine.markTicketAsRead(ticketId: id)
+    }
+
+    public func markTicketAsRead(ticketId: UUID) {
+        notificationEngine.markTicketAsRead(ticketId: ticketId)
     }
 }

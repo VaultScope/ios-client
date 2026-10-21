@@ -76,6 +76,14 @@ public struct SupportTicketsView: View {
             .sheet(isPresented: $showNewTicketSheet) {
                 NewTicketSheet()
             }
+            .navigationDestination(isPresented: Binding<Bool>(
+                get: { appState.navigationTicketId != nil },
+                set: { if !$0 { appState.navigationTicketId = nil } }
+            )) {
+                if let id = appState.navigationTicketId {
+                    TicketDetailView(ticketId: id)
+                }
+            }
         }
     }
 

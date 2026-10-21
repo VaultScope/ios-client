@@ -52,6 +52,7 @@ public enum Endpoint: Sendable {
     // Support
     case tickets
     case ticketDetail(id: UUID)
+    case ticketEvents(id: UUID)
     case createTicket(subject: String, content: String, category: String, priority: String, relatedServiceId: UUID?)
     case replyTicket(id: UUID, content: String)
 
@@ -141,6 +142,8 @@ public enum Endpoint: Sendable {
             return "/api/storefront/tickets"
         case .ticketDetail(let id):
             return "/api/storefront/tickets/\(id.uuidString.lowercased())"
+        case .ticketEvents(let id):
+            return "/api/storefront/tickets/\(id.uuidString.lowercased())/events"
         case .createTicket:
             return "/api/storefront/tickets"
         case .replyTicket(let id, _):
@@ -155,7 +158,7 @@ public enum Endpoint: Sendable {
         switch self {
         case .health, .csrf, .services, .serviceDetail, .catalog, .options,
              .invoices, .invoicePdf, .billing, .profile, .billingEmails,
-             .tickets, .ticketDetail, .activity:
+             .tickets, .ticketDetail, .ticketEvents, .activity:
             return .get
 
         case .login, .register, .verifyEmail, .resendVerification,
