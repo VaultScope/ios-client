@@ -166,7 +166,14 @@ public actor NetworkClient {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
 
-        if let bearer = token, !bearer.isEmpty {
+        // Auto-seed from persistent session storage if memory token was not yet set
+        var activeToken = token
+        if activeToken == nil || activeToken?.isEmpty == true {
+            activeToken = SessionStorage.shared.loadToken()
+            self.token = activeToken
+        }
+
+        if let bearer = activeToken, !bearer.isEmpty {
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         }
 
@@ -198,8 +205,12 @@ public actor NetworkClient {
         // Handle 401 Unauthorized
         if httpResponse.statusCode == 401 {
             let errorMsg = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["error"] as? String ?? "Unauthorized session."
-            Task { @MainActor in
-                NotificationCenter.default.post(name: .vaultScopeUnauthorizedSession, object: nil)
+            // Only trigger session expiration if an authenticated token was actually sent with this request
+            let tokenWasTransmitted = request.value(forHTTPHeaderField: "Authorization") != nil
+            if tokenWasTransmitted {
+                Task { @MainActor in
+                    NotificationCenter.default.post(name: .vaultScopeUnauthorizedSession, object: nil)
+                }
             }
             throw APIError.unauthorized(errorMsg)
         }

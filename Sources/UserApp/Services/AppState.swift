@@ -146,15 +146,6 @@ public final class AppState: ObservableObject {
             self.isAppLocked = true
         }
 
-        if let url = URL(string: self.apiBaseURL) {
-            Task {
-                await networkClient.setBaseURL(url)
-                if !self.savedApiToken.isEmpty {
-                    await networkClient.setToken(self.savedApiToken)
-                }
-            }
-        }
-
         // Subscribe to telemetry changes to trigger UI updates
         engine.objectWillChange
             .sink { [weak self] _ in
@@ -203,14 +194,19 @@ public final class AppState: ObservableObject {
             }
             .store(in: &cancellables)
 
-        if self.isAuthenticated {
-            notificationEngine.startPolling(ticketsRepo: self.ticketsRepo)
-        }
-
-        // Initial sync
+        // Orderly Startup Sequence (BaseURL -> Token -> Polling -> Sync)
         Task { [weak self] in
             guard let self = self else { return }
+
+            if let url = URL(string: self.apiBaseURL) {
+                await networkClient.setBaseURL(url)
+            }
+            if !self.savedApiToken.isEmpty {
+                await networkClient.setToken(self.savedApiToken)
+            }
+
             if self.isAuthenticated {
+                self.notificationEngine.startPolling(ticketsRepo: self.ticketsRepo)
                 await self.refresh()
             } else {
                 await self.fetchPublicCatalog()

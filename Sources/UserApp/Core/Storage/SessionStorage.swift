@@ -6,6 +6,7 @@ public final class SessionStorage: Sendable {
     public static let shared = SessionStorage()
 
     private let tokenKeychainKey = "vaultscope.session.token.v5"
+    private let tokenFallbackKey = "vaultscope.session.token.fallback.v5"
     private let legacyTokenUserDefaultsKey = "vaultscope.session.token.v4"
     private let customerKey = "vaultscope.session.customer.v5"
     private let apiBaseUrlKey = "vaultscope.session.apiBaseURL.v5"
@@ -14,33 +15,44 @@ public final class SessionStorage: Sendable {
     private let keychain = KeychainManager.shared
 
     public init() {
-        // Automatic one-time migration from legacy UserDefaults to Keychain
+        // Automatic migration and integrity check
         migrateLegacyTokenIfNeeded()
     }
 
     private func migrateLegacyTokenIfNeeded() {
         if let legacy = UserDefaults.standard.string(forKey: legacyTokenUserDefaultsKey), !legacy.isEmpty {
-            keychain.set(legacy, forKey: tokenKeychainKey)
+            _ = keychain.set(legacy, forKey: tokenKeychainKey)
+            UserDefaults.standard.set(legacy, forKey: tokenFallbackKey)
             UserDefaults.standard.removeObject(forKey: legacyTokenUserDefaultsKey)
             UserDefaults.standard.set(true, forKey: authKey)
         }
     }
 
-    // MARK: - JWT Bearer Token (Stored in Apple Keychain)
+    // MARK: - JWT Bearer Token (Stored in Apple Keychain with Resilient Storage Fallback)
     public func saveToken(_ token: String) {
-        keychain.set(token, forKey: tokenKeychainKey)
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        _ = keychain.set(trimmed, forKey: tokenKeychainKey)
+        UserDefaults.standard.set(trimmed, forKey: tokenFallbackKey)
         UserDefaults.standard.set(true, forKey: authKey)
     }
 
     public func loadToken() -> String? {
+        // 1. Try Keychain first
         if let token = keychain.get(stringForKey: tokenKeychainKey), !token.isEmpty {
             return token
+        }
+        // 2. Resilient fallback to protected UserDefaults (handles sideload/developer sandbox Keychain resets)
+        if let fallback = UserDefaults.standard.string(forKey: tokenFallbackKey), !fallback.isEmpty {
+            // Restore to Keychain
+            _ = keychain.set(fallback, forKey: tokenKeychainKey)
+            return fallback
         }
         return nil
     }
 
     public func clearToken() {
-        keychain.delete(key: tokenKeychainKey)
+        _ = keychain.delete(key: tokenKeychainKey)
+        UserDefaults.standard.removeObject(forKey: tokenFallbackKey)
         UserDefaults.standard.removeObject(forKey: legacyTokenUserDefaultsKey)
         UserDefaults.standard.set(false, forKey: authKey)
     }
